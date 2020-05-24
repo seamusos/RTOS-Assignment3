@@ -32,8 +32,6 @@ Assignment 3 Program_2 template
 
 #define DEFAULT_WRITE_FILE "output.txt"
 
-
-
 typedef struct fifo
 {
 	int *fd;
@@ -62,8 +60,6 @@ sem_t sem_SRTF;
 pthread_t tid1, tid2; //Thread ID
 pthread_attr_t attr;
 
-
-
 /* Initializes data and utilities used in thread params */
 void initializeData(process_data_t *processData);
 
@@ -72,21 +68,20 @@ void *worker1(void *params);
 
 void *worker2(void *params);
 
-void pushToFIFO(fifo_t * fifo, char *string, float value);
-
+void pushToFIFO(fifo_t *fifo, char *string, float value);
 
 /* this main function creates named pipe and threads */
 int main(int argc, char const *argv[])
 {
 
-
 	Process_Params params;
-	int items = 0;
-	//process_data_t processData[8];
+	int items = 0;	
+	char *myfifo = "./myfifo";
+	int fd;
 
 	if (argc != 2)
 	{
-		printf("No User Defined Output File Name, resulting to default file names \n");
+		printf("No User Defined Output File Name, resulting to default file name \n");
 		strcpy(params.write_file, DEFAULT_WRITE_FILE);
 	}
 	else
@@ -96,12 +91,7 @@ int main(int argc, char const *argv[])
 		strcpy(params.write_file, argv[1]);
 	}
 
-	/* creating a named pipe(FIFO) with read/write permission */
-	// add your code
-
-	char *myfifo = "./myfifo";
-	int fd;
-
+	/* Configuring FIFO */
 	if (mkfifo(myfifo, 0666) == -1)
 	{
 		perror("Error creating FIFO");
@@ -112,38 +102,19 @@ int main(int argc, char const *argv[])
 	{
 		perror("Error opening FIFO");
 	}
-	
 
-	fifo_t fifo;// = {&fd, &items, 100};
+	fifo_t fifo; // = {&fd, &items, 100};
 	fifo.fd = &fd;
 	fifo.items = items;
 	fifo.eSize = 100;
 
 	process_data_t *processData;
-	processData = malloc(sizeof(process_data_t)*NUM_PROCESSES);
+	processData = malloc(sizeof(process_data_t) * NUM_PROCESSES);
 	initializeData(processData);
-
 
 	//params = {&fifo, processData, DEFAULT_WRITE_FILE};
 	params.fifo = &fifo;
 	params.processData = processData;
-
-	for (int i = 0; i < 7; i++)
-	{
-		/* code */
-
-		fprintf(stdout, "Check Process Remaining Time = %d \n", params.processData[i].remain_t);
-
-		
-	}
-	
-
-	/* initialize the parameters */
-	// add your code
-
-	/* create threads */
-	// add your code
-	// Initialization
 
 	pthread_attr_init(&attr);
 
@@ -159,13 +130,20 @@ int main(int argc, char const *argv[])
 		exit(-1);
 	}
 
-	/* wait for the thread to exit */
-	//add your code
+	/* Waiting for Thread To Exit*/
 	pthread_join(tid1, NULL);
 	pthread_join(tid2, NULL);
 
-	free(processData);
+    if(close(fd) == -1)
+    {
+        perror("Issue closing FIFO.\n"); exit(1);
+    }
+	if(unlink(myfifo) == -1)
+    {
+        perror("Issue deleting FIFO name and file.\n"); exit(1);
+    }
 
+	free(processData);
 
 	return 0;
 }
@@ -179,8 +157,9 @@ void *worker1(void *params)
 
 	int endTime, remaining = 0;
 
-	float wait_t, turn_t, avgWait_t, avgTurn_t;
-
+	float wait_t, turn_t; 
+	float avgWait_t = 0;
+	float avgTurn_t = 0;
 
 	for (int time = 0; remaining != NUM_PROCESSES; time++)
 	{
@@ -188,35 +167,24 @@ void *worker1(void *params)
 		int shortestIndex = 0;
 
 		//Scan all proccess for shortest remaining time
-		for(int i = 0; i <= NUM_PROCESSES; i++)
+		for (int i = 0; i <= NUM_PROCESSES; i++)
 		{
 			if (process[i].arrive_t <= time && process[i].remain_t > 0)
 			{
-				printf("In First If Loop \n");
-				if(process[i].remain_t < process[shortestIndex].remain_t)
+				if (process[i].remain_t < process[shortestIndex].remain_t)
 				{
-					printf("in Second if loop");
 					shortestIndex = i;
 				}
-
 			}
 		}
-		printf("Exit Loop \n");
 
-
-		fprintf(stdout, "Shortest Process is = %d \n", shortestIndex);
-
-		fprintf(stdout, "Process Remaining Time = %d \n", process[shortestIndex].remain_t);
-
-		
-		if(process[shortestIndex].arrive_t <= time)
+		if (process[shortestIndex].arrive_t <= time)
 		{
-			process[shortestIndex].remain_t--;	//Simulate decreasing process time
+			process[shortestIndex].remain_t--; //Simulate decreasing process time
 
-			if(process[shortestIndex].remain_t == 0)
+			if (process[shortestIndex].remain_t == 0)
 			{
 				remaining++;
-
 				endTime = time + 1;
 
 				turn_t = endTime - process[shortestIndex].arrive_t;
@@ -224,7 +192,6 @@ void *worker1(void *params)
 
 				avgWait_t += wait_t;
 				avgTurn_t += turn_t;
-
 			}
 		}
 	}
@@ -236,9 +203,7 @@ void *worker1(void *params)
 	fprintf(stdout, "Average Turnaround Time = %f \n", avgTurn_t);
 
 	pushToFIFO(worker1_params->fifo, "Average Wait Time: ", avgWait_t);
-
 	pushToFIFO(worker1_params->fifo, "Average Turnaround Time: ", avgTurn_t);
-
 
 	sem_post(&sem_SRTF);
 
@@ -254,7 +219,7 @@ void *worker2(void *params)
 	char buffer[100];
 
 	printf("Opening Write File\n");
-	FILE* writeFile = fopen(worker2_params->write_file, "w");
+	FILE *writeFile = fopen(worker2_params->write_file, "w");
 	if (!writeFile)
 	{
 		perror("Invalid File\n");
@@ -263,13 +228,10 @@ void *worker2(void *params)
 
 	sem_wait(&sem_SRTF); //Wait for semaphore
 
-
-
-	printf("Items = %d \n", worker2_params->fifo->items);
-	for(int i = 0; i < worker2_params->fifo->items; i++)
+	for (int i = 0; i < worker2_params->fifo->items; i++)
 	{
-		printf("Reading From FIFO", i);
-		if(read(*worker2_params->fifo->fd, buffer, sizeof(buffer)) < 0)
+		printf("Reading From FIFO");
+		if (read(*worker2_params->fifo->fd, buffer, sizeof(buffer)) < 0)
 		{
 			perror("Failed to Read from FIFO");
 			exit(1);
@@ -277,14 +239,14 @@ void *worker2(void *params)
 
 		printf("Writing to File: %s\n", buffer);
 
-		if(fputs(buffer, writeFile) == EOF)
+		if (fputs(buffer, writeFile) == EOF)
 		{
 			perror("error writing to file");
 			exit(0);
 		}
 	}
 
-	if(fclose(writeFile) == -1)
+	if (fclose(writeFile) == -1)
 	{
 		perror("Error Closing File");
 		exit(1);
@@ -300,7 +262,6 @@ void *worker2(void *params)
 
 void initializeData(process_data_t *processData)
 {
-
 	printf("Init Params \n");
 
 	// Initialize Sempahores
@@ -310,23 +271,19 @@ void initializeData(process_data_t *processData)
 		exit(0);
 	}
 
+	processData[0].pid = 1;	processData[0].arrive_t = 8;	processData[0].burst_t = 10;
+	processData[1].pid = 2;	processData[1].arrive_t = 10;	processData[1].burst_t = 3;
+	processData[2].pid = 3;	processData[2].arrive_t = 14;	processData[2].burst_t = 7;
+	processData[3].pid = 4;	processData[3].arrive_t = 9;	processData[3].burst_t = 5;
+	processData[4].pid = 5;	processData[4].arrive_t = 16;	processData[4].burst_t = 4;
+	processData[5].pid = 6;	processData[5].arrive_t = 21;	processData[5].burst_t = 6;
+	processData[6].pid = 7;	processData[6].arrive_t = 26;	processData[6].burst_t = 2;
 
-	processData[0].pid = 1; processData[0].arrive_t = 8;	processData[0].burst_t = 10;
-	processData[1].pid = 2; processData[1].arrive_t = 10;	processData[1].burst_t = 3;		
-	processData[2].pid = 3; processData[2].arrive_t = 14;	processData[2].burst_t = 7;
-	processData[3].pid = 4; processData[3].arrive_t = 9;	processData[3].burst_t = 5;
-	processData[4].pid = 5; processData[4].arrive_t = 16;	processData[4].burst_t = 4;
-	processData[5].pid = 6; processData[5].arrive_t = 21;	processData[5].burst_t = 6;
-	processData[6].pid = 7; processData[6].arrive_t = 26;	processData[6].burst_t = 2;
-	//processData[7].pid = 8; processData[7].arrive_t = 30; processData[7].burst_t = 13;
-	
 	//Initialise remaining time to be same as burst time
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < 7; i++)
+	{
 		processData[i].remain_t = processData[i].burst_t;
-	fprintf(stdout, "Init Process Remaining Time = %d \n", processData[i].remain_t);
 	}
-
-	//exit(0);
 }
 
 void pushToFIFO(fifo_t *fifo, char *string, float value)
@@ -334,11 +291,10 @@ void pushToFIFO(fifo_t *fifo, char *string, float value)
 	char buffer[100];
 	snprintf(buffer, sizeof(buffer), "%s%f \n", string, value);
 	printf("Writing to FIFO: %s \n", buffer);
-	if(write(*fifo->fd, buffer, sizeof(buffer)) == -1)
+	if (write(*fifo->fd, buffer, sizeof(buffer)) == -1)
 	{
 		perror("Failed to Write to FIFO");
 		exit(1);
 	}
-
 	fifo->items++;
 }
