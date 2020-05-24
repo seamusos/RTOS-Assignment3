@@ -41,10 +41,12 @@ int main(int argc, char* argv[])
 {
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
 	//add your code here
+
+	signal(SIGINT, SignalHandler);
 	
-        int i;
+	int i;
 	// reference number
-	int REFERENCESTRINGLENGTH=24;
+	int REFERENCESTRINGLENGTH = 24;
 	//Argument from the user on the frame size, such as 4 frames in the document
 	int frameSize = atoi(argv[1]);
 	//Frame where we will be storing the references. -1 is equivalent to an empty value
@@ -58,6 +60,8 @@ int main(int argc, char* argv[])
 	//Current value of the reference string.
 	int currentValue;
 
+	int oldest = 0;
+
 	//Initialise the empty frame with -1 to simulate empty values.
 	for(i = 0; i < frameSize; i++)
 	{
@@ -67,8 +71,36 @@ int main(int argc, char* argv[])
 	//Loop through the reference string values.
 	for(i = 0; i < REFERENCESTRINGLENGTH; i++)
 	{
-		//add your code here
-		
+		match = false;
+		currentValue = referenceString[i];
+		printf("Current Value = %d \n", currentValue);
+
+		//Scan frame for exisiting page
+		for (int j = 0; j < frameSize; j++)
+		{
+			printf("Current Frame Value = %d\n", frame[j]);
+			/* Check if current Value is already in frame */
+			if (currentValue == frame[j])
+			{
+				printf("Match \n");
+				match = true;
+				break;	//Break For Loop, value already found
+			}						
+		}
+		if (match == false) //No Exisiting Matching Values
+		{
+
+			pageFaults++;	//Incremenet Page Fault
+			printf("Page Fault, Current Count = %d\n", pageFaults);
+			frame[nextWritePosition] = currentValue; //Write into oldest position
+			nextWritePosition++;	//Shift write position to next oldest point
+
+			/* Wrap around to begining */
+			if (nextWritePosition >= frameSize)
+			{
+				nextWritePosition = 0;
+			}			
+		}
 	}
 
 	//Sit here until the ctrl+c signal is given by the user.
@@ -87,6 +119,9 @@ int main(int argc, char* argv[])
  */
 void SignalHandler(int signal)
 {
-	printf("\nTotal page faults: %d\n", pageFaults);
+	if(signal == SIGINT)
+	{
+		printf("\nTotal page faults: %d\n", pageFaults);
+	}
 	exit(0);
 }
