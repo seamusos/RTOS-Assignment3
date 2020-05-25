@@ -43,6 +43,12 @@ int main(int argc, char* argv[])
 	//add your code here
 
 	signal(SIGINT, SignalHandler);
+
+	if (argc != 2)
+	{
+		printf("Error: No User Input for Frame Size\n");
+		exit(1);
+	}
 	
 	int i;
 	// reference number
@@ -60,8 +66,6 @@ int main(int argc, char* argv[])
 	//Current value of the reference string.
 	int currentValue;
 
-	int oldest = 0;
-
 	//Initialise the empty frame with -1 to simulate empty values.
 	for(i = 0; i < frameSize; i++)
 	{
@@ -73,23 +77,23 @@ int main(int argc, char* argv[])
 	{
 		match = false;
 		currentValue = referenceString[i];
-		printf("Current Value = %d \n", currentValue);
+		
+		printf("_______________________________\n\n");
+		printf("Scanning Frame..\n");
 
 		//Scan frame for exisiting page
 		for (int j = 0; j < frameSize; j++)
 		{
-			printf("Current Frame Value = %d\n", frame[j]);
 			/* Check if current Value is already in frame */
 			if (currentValue == frame[j])
 			{
-				printf("Match \n");
+				printf("Match, Already in Frame\n");
 				match = true;
 				break;	//Break For Loop, value already found
 			}						
 		}
 		if (match == false) //No Exisiting Matching Values
 		{
-
 			pageFaults++;	//Incremenet Page Fault
 			printf("Page Fault, Current Count = %d\n", pageFaults);
 			frame[nextWritePosition] = currentValue; //Write into oldest position
@@ -101,9 +105,19 @@ int main(int argc, char* argv[])
 				nextWritePosition = 0;
 			}			
 		}
+
+		//Print current Fram
+		printf("\nCurrent Frame: \n");
+		printf("Reference \n%d \n--\n", currentValue);
+		for(int j = 0; j < frameSize; j++)
+		{
+			printf("%d\n", frame[j]);	
+		}
+		printf("Page Frame\n\n");
 	}
 
 	//Sit here until the ctrl+c signal is given by the user.
+	printf("Algorithum Finished, Waiting for User Signal (Ctrl + C)\n");
 	while(1)
 	{
 		sleep(1);

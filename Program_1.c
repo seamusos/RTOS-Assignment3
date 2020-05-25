@@ -76,8 +76,7 @@ int main(int argc, char const *argv[])
 
 	Process_Params params;
 	int items = 0;	
-	char *myfifo = "./myfifo";
-	int fd;
+
 
 	if (argc != 2)
 	{
@@ -91,6 +90,9 @@ int main(int argc, char const *argv[])
 		strcpy(params.write_file, argv[1]);
 	}
 
+	char *myfifo = "./myfifo";	//Declare FIFO Path
+	int fd;
+
 	/* Configuring FIFO */
 	if (mkfifo(myfifo, 0666) == -1)
 	{
@@ -103,21 +105,23 @@ int main(int argc, char const *argv[])
 		perror("Error opening FIFO");
 	}
 
-	fifo_t fifo; // = {&fd, &items, 100};
+	//Add FIFO Variables
+	fifo_t fifo;
 	fifo.fd = &fd;
 	fifo.items = items;
 	fifo.eSize = 100;
 
+	//Allocate array for process Data
 	process_data_t *processData;
 	processData = malloc(sizeof(process_data_t) * NUM_PROCESSES);
 	initializeData(processData);
 
-	//params = {&fifo, processData, DEFAULT_WRITE_FILE};
 	params.fifo = &fifo;
 	params.processData = processData;
 
 	pthread_attr_init(&attr);
 
+	//Create Threads
 	if (pthread_create(&tid1, &attr, worker1, (void *)(&params)) != 0)
 	{
 		perror("Error Creating Thread");
@@ -134,13 +138,15 @@ int main(int argc, char const *argv[])
 	pthread_join(tid1, NULL);
 	pthread_join(tid2, NULL);
 
+	//Close link to FIFO
     if(close(fd) == -1)
     {
-        perror("Issue closing FIFO.\n"); exit(1);
+        perror("Error closing FIFO.\n"); exit(1);
     }
+	//Remove FIFO 
 	if(unlink(myfifo) == -1)
     {
-        perror("Issue deleting FIFO name and file.\n"); exit(1);
+        perror("Error removing FIFO\n"); exit(1);
     }
 
 	free(processData);
@@ -151,7 +157,6 @@ int main(int argc, char const *argv[])
 /* this function calculates CPU SRTF scheduling, writes waiting time and turn-around time to th FIFO */
 void *worker1(void *params)
 {
-	// add your code here
 	Process_Params *worker1_params = (Process_Params *)(params);
 	process_data_t *process = worker1_params->processData;
 
@@ -213,7 +218,6 @@ void *worker1(void *params)
 /* reads the waiting time and turn-around time through the FIFO and writes to text file */
 void *worker2(void *params)
 {
-	// add your code here
 	Process_Params *worker2_params = params;
 
 	char buffer[100];
@@ -296,5 +300,5 @@ void pushToFIFO(fifo_t *fifo, char *string, float value)
 		perror("Failed to Write to FIFO");
 		exit(1);
 	}
-	fifo->items++;
+	fifo->items++; 	//Increases amount of items in FIFO
 }
