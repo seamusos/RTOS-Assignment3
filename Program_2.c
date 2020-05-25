@@ -41,10 +41,18 @@ int main(int argc, char* argv[])
 {
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
 	//add your code here
+
+	signal(SIGINT, SignalHandler);
+
+	if (argc != 2)
+	{
+		printf("Error: No User Input for Frame Size\n");
+		exit(1);
+	}
 	
-        int i;
+	int i;
 	// reference number
-	int REFERENCESTRINGLENGTH=24;
+	int REFERENCESTRINGLENGTH = 24;
 	//Argument from the user on the frame size, such as 4 frames in the document
 	int frameSize = atoi(argv[1]);
 	//Frame where we will be storing the references. -1 is equivalent to an empty value
@@ -67,11 +75,49 @@ int main(int argc, char* argv[])
 	//Loop through the reference string values.
 	for(i = 0; i < REFERENCESTRINGLENGTH; i++)
 	{
-		//add your code here
+		match = false;
+		currentValue = referenceString[i];
 		
+		printf("_______________________________\n\n");
+		printf("Scanning Frame..\n");
+
+		//Scan frame for exisiting page
+		for (int j = 0; j < frameSize; j++)
+		{
+			/* Check if current Value is already in frame */
+			if (currentValue == frame[j])
+			{
+				printf("Match, Already in Frame\n");
+				match = true;
+				break;	//Break For Loop, value already found
+			}						
+		}
+		if (match == false) //No Exisiting Matching Values
+		{
+			pageFaults++;	//Incremenet Page Fault
+			printf("Page Fault, Current Count = %d\n", pageFaults);
+			frame[nextWritePosition] = currentValue; //Write into oldest position
+			nextWritePosition++;	//Shift write position to next oldest point
+
+			/* Wrap around to begining */
+			if (nextWritePosition >= frameSize)
+			{
+				nextWritePosition = 0;
+			}			
+		}
+
+		//Print current Fram
+		printf("\nCurrent Frame: \n");
+		printf("Reference \n%d \n--\n", currentValue);
+		for(int j = 0; j < frameSize; j++)
+		{
+			printf("%d\n", frame[j]);	
+		}
+		printf("Page Frame\n\n");
 	}
 
 	//Sit here until the ctrl+c signal is given by the user.
+	printf("Algorithum Finished, Waiting for User Signal (Ctrl + C)\n");
 	while(1)
 	{
 		sleep(1);
@@ -87,6 +133,9 @@ int main(int argc, char* argv[])
  */
 void SignalHandler(int signal)
 {
-	printf("\nTotal page faults: %d\n", pageFaults);
+	if(signal == SIGINT)
+	{
+		printf("\nTotal page faults: %d\n", pageFaults);
+	}
 	exit(0);
 }
